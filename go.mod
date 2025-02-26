@@ -3,6 +3,7 @@ module postman.bits/task
 go 1.23
 
 require (
+	github.com/mattn/go-sqlite3 v1.14.24 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/richardlehane/mscfb v1.0.4 // indirect
 	github.com/richardlehane/msoleps v1.0.4 // indirect
