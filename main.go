@@ -1,10 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"strconv"
 	"sort"
-	
+	"strconv"
+
 	"github.com/xuri/excelize/v2"
 )
 
@@ -25,11 +26,11 @@ type Student struct {
 }
 
 func main() {
-	// TODO : Take the filename and sheetname as input from the user
-	filename := "./CSF111_202425_01_GradeBook_stripped.xlsx"
-	sheetname := "CSF111_202425_01_GradeBook"
-
-	f, err := excelize.OpenFile(filename)
+	filename := flag.String("filename", "./CSF111_202425_01_GradeBook_stripped.xlsx", "Excel file path to read data from")
+	sheetname := flag.String("sheet", "CSF111_202425_01_GradeBook", "Sheet name in the Excel file")
+	
+	flag.Parse()
+	f, err := excelize.OpenFile(*filename)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -42,7 +43,7 @@ func main() {
 	}()
 
 	// Remove rows missing data
-	rows, err := f.GetRows(sheetname)
+	rows, err := f.GetRows(*sheetname)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -53,7 +54,7 @@ func main() {
 		}
 		if row[0] == "" {
 			fmt.Println("Removing row ", i+1)
-			if err := f.RemoveRow(sheetname, i+1); err != nil {
+			if err := f.RemoveRow(*sheetname, i+1); err != nil {
 				fmt.Println(err)
 				return
 			}
@@ -63,7 +64,7 @@ func main() {
 	println("Students: ", len(rows)-1)
 
 	// Read the updated rows
-	rows, err = f.GetRows(sheetname)
+	rows, err = f.GetRows(*sheetname)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -154,7 +155,7 @@ func main() {
 	fmt.Println("Invalid Student Data Count :", count_invalid)
 
 	// Calculating averages for all components and branch-wise total averages
-	validCount := len(rows)-1 - count_invalid
+	validCount := len(rows) - 1 - count_invalid
 	if validCount <= 0 {
 		fmt.Println("No valid student data to compute averages")
 	} else {
@@ -176,13 +177,13 @@ func main() {
 			branchSums[s.branch] += s.total
 			branchCounts[s.branch]++
 		}
-		
+
 		// Ranking top 3 students for each component based on their marks
 		type RankEntry struct {
 			emplid int
 			mark   float32
 		}
-		
+
 		// Helper function to rank components
 		rankComponent := func(componentName string, getMark func(s Student) float32) {
 			var entries []RankEntry
@@ -202,8 +203,8 @@ func main() {
 			}
 			fmt.Println()
 		}
-		fmt.Println("\n========== Component Wise Top 3==========\n")
-		
+		fmt.Print("\n========== Component Wise Top 3 ==========\n\n")
+
 		rankComponent("Quiz", func(s Student) float32 { return s.quiz })
 		rankComponent("Midsem", func(s Student) float32 { return s.midsem })
 		rankComponent("Labtest", func(s Student) float32 { return s.labtest })
@@ -211,7 +212,7 @@ func main() {
 		rankComponent("Pre-Compres", func(s Student) float32 { return s.pre_compres })
 		rankComponent("Compres", func(s Student) float32 { return s.compres })
 		rankComponent("Total", func(s Student) float32 { return s.total })
-		fmt.Println("\n========== General Averages ==========\n")
+		fmt.Print("\n========== General Averages ==========\n\n")
 		fmt.Printf("Average Quiz: %.2f\n", sumQuiz/float32(validCount))
 		fmt.Printf("Average Midsem: %.2f\n", sumMidsem/float32(validCount))
 		fmt.Printf("Average Labtest: %.2f\n", sumLabtest/float32(validCount))
@@ -220,7 +221,7 @@ func main() {
 		fmt.Printf("Average Compres: %.2f\n", sumCompres/float32(validCount))
 		fmt.Printf("Overall Total Average: %.2f\n", sumTotal/float32(validCount))
 
-		fmt.Println("\n========== Branchwise Total Averages ==========\n")
+		fmt.Print("\n========== Branchwise Total Averages ==========\n\n")
 		for branch, sum := range branchSums {
 			avg := sum / float32(branchCounts[branch])
 			fmt.Printf("Branch %s Total Average: %.2f\n", branch, avg)
