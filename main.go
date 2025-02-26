@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"strconv"
-
+	"sort"
+	
 	"github.com/xuri/excelize/v2"
 )
 
@@ -69,6 +70,7 @@ func main() {
 	}
 	students := make([]Student, len(rows)-1)
 	count_invalid := 0
+
 	for i, row := range rows {
 		if i == 0 {
 			continue
@@ -128,13 +130,13 @@ func main() {
 			reasons += "total out of range (0-300); "
 		}
 		// Verify sum of pre_compres
-		if (s.quiz+s.midsem+s.labtest+s.weekly_labs ) - s.pre_compres > 0.01 {
+		if (s.quiz+s.midsem+s.labtest+s.weekly_labs)-s.pre_compres > 0.01 {
 			is_valid = false
 			reasons += "sum of quiz, midsem, labtest, and weekly_labs does not equal pre_compres; "
-			fmt.Println(s.quiz+s.midsem+s.labtest+s.weekly_labs)
+			fmt.Println(s.quiz + s.midsem + s.labtest + s.weekly_labs)
 		}
 		// Verify sum of all components
-		if (s.quiz+s.midsem+s.labtest+s.weekly_labs+s.compres) - s.total > 0.01{
+		if (s.quiz+s.midsem+s.labtest+s.weekly_labs+s.compres)-s.total > 0.01 {
 			is_valid = false
 			reasons += "sum of all components does not equal total; "
 		}
@@ -149,5 +151,79 @@ func main() {
 		}
 	}
 
-	fmt.Println("Count :", count_invalid)
+	fmt.Println("Invalid Student Data Count :", count_invalid)
+
+	// Calculating averages for all components and branch-wise total averages
+	validCount := len(rows)-1 - count_invalid
+	if validCount <= 0 {
+		fmt.Println("No valid student data to compute averages")
+	} else {
+		var sumQuiz, sumMidsem, sumLabtest, sumWeekly, sumPreCompres, sumCompres, sumTotal float32
+		branchSums := make(map[string]float32)
+		branchCounts := make(map[string]int)
+		for _, s := range students {
+			if !s.is_valid {
+				continue
+			}
+			sumQuiz += s.quiz
+			sumMidsem += s.midsem
+			sumLabtest += s.labtest
+			sumWeekly += s.weekly_labs
+			sumPreCompres += s.pre_compres
+			sumCompres += s.compres
+			sumTotal += s.total
+
+			branchSums[s.branch] += s.total
+			branchCounts[s.branch]++
+		}
+		
+		// Ranking top 3 students for each component based on their marks
+		type RankEntry struct {
+			emplid int
+			mark   float32
+		}
+		
+		// Helper function to rank components
+		rankComponent := func(componentName string, getMark func(s Student) float32) {
+			var entries []RankEntry
+			for _, s := range students {
+				if s.is_valid {
+					entries = append(entries, RankEntry{emplid: s.emplid, mark: getMark(s)})
+				}
+			}
+			// sort descending by mark
+			sort.Slice(entries, func(i, j int) bool {
+				return entries[i].mark > entries[j].mark
+			})
+			fmt.Printf("Top 3 for %s:\n", componentName)
+			ranks := []string{"1st", "2nd", "3rd"}
+			for i := 0; i < len(entries) && i < 3; i++ {
+				fmt.Printf("Emplid: %d, Marks: %.2f, Rank: %s\n", entries[i].emplid, entries[i].mark, ranks[i])
+			}
+			fmt.Println()
+		}
+		fmt.Println("\n========== Component Wise Top 3==========\n")
+		
+		rankComponent("Quiz", func(s Student) float32 { return s.quiz })
+		rankComponent("Midsem", func(s Student) float32 { return s.midsem })
+		rankComponent("Labtest", func(s Student) float32 { return s.labtest })
+		rankComponent("Weekly Labs", func(s Student) float32 { return s.weekly_labs })
+		rankComponent("Pre-Compres", func(s Student) float32 { return s.pre_compres })
+		rankComponent("Compres", func(s Student) float32 { return s.compres })
+		rankComponent("Total", func(s Student) float32 { return s.total })
+		fmt.Println("\n========== General Averages ==========\n")
+		fmt.Printf("Average Quiz: %.2f\n", sumQuiz/float32(validCount))
+		fmt.Printf("Average Midsem: %.2f\n", sumMidsem/float32(validCount))
+		fmt.Printf("Average Labtest: %.2f\n", sumLabtest/float32(validCount))
+		fmt.Printf("Average Weekly Labs: %.2f\n", sumWeekly/float32(validCount))
+		fmt.Printf("Average Pre-Compres: %.2f\n", sumPreCompres/float32(validCount))
+		fmt.Printf("Average Compres: %.2f\n", sumCompres/float32(validCount))
+		fmt.Printf("Overall Total Average: %.2f\n", sumTotal/float32(validCount))
+
+		fmt.Println("\n========== Branchwise Total Averages ==========\n")
+		for branch, sum := range branchSums {
+			avg := sum / float32(branchCounts[branch])
+			fmt.Printf("Branch %s Total Average: %.2f\n", branch, avg)
+		}
+	}
 }
