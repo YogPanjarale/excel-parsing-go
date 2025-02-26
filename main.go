@@ -146,6 +146,12 @@ func main() {
             fmt.Println("Invalid student:", row, "Reasons:", reasons)
         }
 
+		if *classno !=0{
+			class_no, _ := strconv.Atoi(row[1])
+			if class_no != *classno {
+				continue // Skip if classno does not match
+			}
+		}
         // Insert data into SQLite
         stmt, err := db.Prepare("INSERT INTO students(sino, classno, emplid, campusid, branch, quiz, midsem, labtest, weekly_labs, pre_compres, compres, total, is_valid) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)")
         if err != nil {
@@ -163,10 +169,7 @@ func main() {
         }
     }
 
-	if *classno !=0{
-		// TODO: purge all entries which do not match classno
-
-	}
+	
 
     // Generating and printing report
     printReport(db)
